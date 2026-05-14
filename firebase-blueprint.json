@@ -1,0 +1,55 @@
+{
+  "entities": {
+    "Customer": {
+      "title": "Customer",
+      "description": "A customer bill record",
+      "type": "object",
+      "properties": {
+        "inv": { "type": "string" },
+        "nama": { "type": "string" },
+        "paket": { "type": "string" },
+        "periode": { "type": "string" },
+        "harga": { "type": "string" },
+        "lunas": { "type": "boolean" },
+        "createdAt": { "type": "integer" },
+        "updatedAt": { "type": "integer" }
+      },
+      "required": ["inv", "nama", "paket", "periode", "harga", "lunas", "createdAt", "updatedAt"]
+    },
+    "Config": {
+      "title": "Config",
+      "description": "App configuration",
+      "type": "object",
+      "properties": {
+        "logo": { "type": "string" },
+        "qris": { "type": "string" },
+        "updatedAt": { "type": "integer" }
+      },
+      "required": ["updatedAt"]
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Admin users",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "createdAt": { "type": "integer" }
+      },
+      "required": ["email", "createdAt"]
+    }
+  },
+  "firestore": {
+    "customers/{customerId}": {
+      "schema": { "$ref": "#/entities/Customer" },
+      "description": "Customer records indexed by WA number"
+    },
+    "config/{docId}": {
+      "schema": { "$ref": "#/entities/Config" },
+      "description": "App Configuration like logo and qris"
+    },
+    "admins/{adminId}": {
+      "schema": { "$ref": "#/entities/Admin" },
+      "description": "Admin users allowed to manage app"
+    }
+  }
+}

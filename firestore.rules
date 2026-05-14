@@ -1,0 +1,65 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function incoming() { return request.resource.data; }
+    function existing() { return resource.data; }
+    function isSignedIn() { return request.auth != null; }
+    function isAdmin() { 
+      return isSignedIn() && (
+        (request.auth.token.email == 'cipunknet@gmail.com' && request.auth.token.email_verified == true) || 
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+    function isValidId(id) { 
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\+]+$'); 
+    }
+
+    function isValidCustomer(data) {
+      return data.keys().hasAll(['inv', 'nama', 'paket', 'periode', 'harga', 'lunas', 'createdAt', 'updatedAt']) &&
+             (!('buktiTransfer' in data) || (data.buktiTransfer is string && data.buktiTransfer.size() <= 1048000)) &&
+             data.inv is string && data.inv.size() <= 100 &&
+             data.nama is string && data.nama.size() <= 100 &&
+             data.paket is string && data.paket.size() <= 50 &&
+             data.periode is string && data.periode.size() <= 50 &&
+             data.harga is string && data.harga.size() <= 50 &&
+             data.lunas is bool &&
+             data.createdAt is timestamp &&
+             data.updatedAt is timestamp;
+    }
+
+    match /customers/{customerId} {
+      allow get: if isValidId(customerId);
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidCustomer(incoming()) && incoming().createdAt == request.time && incoming().updatedAt == request.time;
+      allow update: if 
+        (isAdmin() && isValidCustomer(incoming()) && incoming().updatedAt == request.time && incoming().createdAt == existing().createdAt) ||
+        (!isAdmin() && isValidCustomer(incoming()) && incoming().updatedAt == request.time && incoming().createdAt == existing().createdAt && incoming().diff(existing()).affectedKeys().hasOnly(['buktiTransfer', 'updatedAt']));
+      allow delete: if isAdmin();
+    }
+
+    function isValidConfig(data) {
+      // Configuration object
+      return data.keys().hasAll(['updatedAt']) &&
+             (!('logo' in data) || (data.logo is string && data.logo.size() <= 3000000)) &&
+             (!('qris' in data) || (data.qris is string && data.qris.size() <= 3000000)) &&
+             data.updatedAt is timestamp;
+    }
+
+    match /config/{docId} {
+      allow get: if isValidId(docId);
+      allow list: if isAdmin();
+      allow create: if isAdmin() && isValidConfig(incoming()) && incoming().updatedAt == request.time;
+      allow update: if isAdmin() && isValidConfig(incoming()) && incoming().diff(existing()).affectedKeys().hasOnly(['logo', 'qris', 'updatedAt']) && incoming().updatedAt == request.time;
+      allow delete: if isAdmin();
+    }
+
+    match /admins/{adminId} {
+      allow read: if isAdmin();
+      allow write: if false; 
+    }
+  }
+}
